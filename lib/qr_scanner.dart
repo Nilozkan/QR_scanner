@@ -14,21 +14,23 @@ class QRScanner extends StatefulWidget {
 class _QRScannerState extends State<QRScanner> {
   bool scannerStarted = false;
   bool isScanCompleted = false;
-  late MobileScannerController _mobileScannerController;
+  bool flashOn = false;
+  final MobileScannerController _mobileScannerController = MobileScannerController(
+    torchEnabled: false,
+    facing: CameraFacing.back,
+  );
   String willShowText = "Scanning...";
-  late BarcodeCapture _barcodeCapture;
 
   @override
   void initState() {
     super.initState();
-    _mobileScannerController = MobileScannerController();
     // _mobileScannerController = MobileScannerController(
     //   autoStart: true,
     //   cameraResolution: const Size(720, 1280),
     //   detectionSpeed: DetectionSpeed.normal,
     //   torchEnabled: false,
     //   detectionTimeoutMs: 1200,
-    //   facing: CameraFacing.back,
+    //
     // );
   }
 
@@ -48,7 +50,18 @@ class _QRScannerState extends State<QRScanner> {
       setState(() {
         willShowText = capture.barcodes.first.url!.url;
       });
+    } else if (capture.barcodes.first.type == BarcodeType.sms) {
+      launchUrl(
+        Uri(
+          scheme: 'sms',
+          path: capture.barcodes.first.sms!.phoneNumber,
+          queryParameters: {
+            'body': capture.barcodes.first.sms!.message,
+          },
+        ),
+      );
     }
+    print(capture.barcodes.first.type);
   }
 
   Widget errorBuilder = Container(
@@ -100,15 +113,24 @@ class _QRScannerState extends State<QRScanner> {
         actions: [
           IconButton(
             onPressed: () {
-              setState(() {
-                willShowText = "Scanning...";
-              });
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QRScanner()));
             },
             icon: const Icon(
               Icons.refresh,
             ),
           ),
         ],
+      ),
+      floatingActionButton: IconButton(
+        icon: Icon(
+          flashOn ? Icons.flash_on : Icons.flash_off,
+        ),
+        onPressed: () {
+          setState(() {
+            flashOn = !flashOn;
+            _mobileScannerController.toggleTorch();
+          });
+        },
       ),
       body: Container(
         width: double.infinity,
